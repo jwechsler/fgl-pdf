@@ -143,7 +143,7 @@ module FglPdf
 
         j += 1
       end
-      return(final ? lone_lt(buf, pos) : nil) if j >= buf.bytesize
+      return (final ? lone_lt(buf, pos) : nil) if j >= buf.bytesize
 
       body = buf.byteslice(pos + 1, j - pos - 1)
       name, args = self.class.split_command(body)
@@ -156,11 +156,11 @@ module FglPdf
       when 'g' then with_payload(buf, pos, after, name, args, final, count_arg(args, 0))
       when 't' then transparent(buf, pos, after, final)
       when 'FGL' then [Token.new(kind: :ignored, name: name, args: args, raw: buf.byteslice(pos, after - pos)), after]
-      when *FIELD_NAMES then with_delimited(buf, pos, after, name, args, final) { |b, at| tilde_field(b, at) }
-      when *TWO_D_NAMES then with_delimited(buf, pos, after, name, args, final) { |b, at| brace_field(b, at) }
+      when *FIELD_NAMES then with_delimited(buf, pos, after, name, args, final) { |b, start| tilde_field(b, start) }
+      when *TWO_D_NAMES then with_delimited(buf, pos, after, name, args, final) { |b, start| brace_field(b, start) }
       when BARCODE_NAME
         type = Regexp.last_match(1).upcase
-        with_delimited(buf, pos, after, name, args, final) { |b, at| barcode_field(type, b, at) }
+        with_delimited(buf, pos, after, name, args, final) { |b, start| barcode_field(type, b, start) }
       else command(buf, pos, after, name, args)
       end
     end
@@ -201,7 +201,7 @@ module FglPdf
 
     # The block returns [data, end_pos] (field found), :none (no field follows) or :more.
     def with_delimited(buf, pos, after, name, args, final)
-      return(final ? command(buf, pos, after, name, args) : nil) if after >= buf.bytesize
+      return (final ? command(buf, pos, after, name, args) : nil) if after >= buf.bytesize
 
       result = yield(buf, after)
       case result
@@ -213,16 +213,16 @@ module FglPdf
       end
     end
 
-    def tilde_field(buf, at)
-      return :none unless buf.getbyte(at) == 0x7E
+    def tilde_field(buf, start)
+      return :none unless buf.getbyte(start) == 0x7E
 
-      closing_field(buf, at + 1, '~')
+      closing_field(buf, start + 1, '~')
     end
 
-    def brace_field(buf, at)
-      return :none unless buf.getbyte(at) == 0x7B
+    def brace_field(buf, start)
+      return :none unless buf.getbyte(start) == 0x7B
 
-      closing_field(buf, at + 1, '}')
+      closing_field(buf, start + 1, '}')
     end
 
     # Finds +close+ after +start+; returns [content, pos after close], :more or :none.
@@ -235,31 +235,31 @@ module FglPdf
       [buf.byteslice(start, idx - start), idx + 1]
     end
 
-    def barcode_field(type, buf, at)
+    def barcode_field(type, buf, start)
       case type
-      when 'N' then simple_delimited(buf, at, '*')
-      when 'F' then simple_delimited(buf, at, ':')
-      when 'O' then simple_delimited(buf, at, '^')
-      when 'C' then codabar_field(buf, at)
-      else upc_field(buf, at)
+      when 'N' then simple_delimited(buf, start, '*')
+      when 'F' then simple_delimited(buf, start, ':')
+      when 'O' then simple_delimited(buf, start, '^')
+      when 'C' then codabar_field(buf, start)
+      else upc_field(buf, start)
       end
     end
 
-    def simple_delimited(buf, at, delim)
-      return :none unless buf.getbyte(at) == delim.ord
+    def simple_delimited(buf, start, delim)
+      return :none unless buf.getbyte(start) == delim.ord
 
-      closing_field(buf, at + 1, delim)
+      closing_field(buf, start + 1, delim)
     end
 
     # Codabar data runs from a start char A–D to the next stop char A–D. Both are kept:
     # they are part of the symbol (Symbology.codabar encodes them).
-    def codabar_field(buf, at)
-      return :none unless 'ABCDabcd'.include?(buf.byteslice(at, 1))
+    def codabar_field(buf, start)
+      return :none unless 'ABCDabcd'.include?(buf.byteslice(start, 1))
 
-      j = at + 1
+      j = start + 1
       while j < buf.bytesize
-        return [buf.byteslice(at, j - at + 1), j + 1] if 'ABCDabcd'.include?(buf.byteslice(j, 1))
-        return :none if TEXT_STOP.include?(buf.getbyte(j)) || j - at > MAX_FIELD
+        return [buf.byteslice(start, j - start + 1), j + 1] if 'ABCDabcd'.include?(buf.byteslice(j, 1))
+        return :none if TEXT_STOP.include?(buf.getbyte(j)) || j - start > MAX_FIELD
 
         j += 1
       end
@@ -268,17 +268,19 @@ module FglPdf
 
     # UPC/EAN: optional parity/number-system digit, then J…K…L (markers removed).
     # A bare run of digits is also accepted.
-    def upc_field(buf, at)
-      j = at
+    def upc_field(buf, start)
+      j = start
       j += 1 while j < buf.bytesize && digit?(buf.getbyte(j))
       return :more if j >= buf.bytesize
-      return(j > at ? [buf.byteslice(at, j - at), j] : :none) unless buf.getbyte(j) == 'J'.ord && j - at <= 1
+      unless buf.getbyte(j) == 'J'.ord && j - start <= 1
+        return j > start ? [buf.byteslice(start, j - start), j] : :none
+      end
 
       close = buf.index('L', j)
-      return(buf.bytesize - j > 64 ? :none : :more) unless close
+      return (buf.bytesize - j > 64 ? :none : :more) unless close
       return :none if close - j > 64
 
-      [buf.byteslice(at, close - at).delete('JK'), close + 1]
+      [buf.byteslice(start, close - start).delete('JK'), close + 1]
     end
 
     def digit?(byte)
@@ -288,7 +290,7 @@ module FglPdf
     # ESC … ESC. Inner tokens are lexed normally so graphics payloads (which may contain
     # ESC) are length-honored. "ESC c" is the clear-downloads command, not a block.
     def lex_esc(buf, pos, final)
-      return(final ? lex_text(buf, pos, final, 1) : nil) if pos + 1 >= buf.bytesize
+      return (final ? lex_text(buf, pos, final, 1) : nil) if pos + 1 >= buf.bytesize
       if buf.getbyte(pos + 1) == 'c'.ord
         return [Token.new(kind: :command, name: 'ESCc', args: [], raw: buf.byteslice(pos, 2)), pos + 2]
       end

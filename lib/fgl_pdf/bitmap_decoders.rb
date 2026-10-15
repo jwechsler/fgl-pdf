@@ -123,7 +123,7 @@ module FglPdf
         while out.bytesize < total && pos < bytes.bytesize
           b = bytes.getbyte(pos)
           pos += 1
-          if (b & 0xC0) == 0xC0
+          if b.allbits?(0xC0)
             value = bytes.getbyte(pos) || 0
             pos += 1
             out << (value.chr * (b & 0x3F))
@@ -135,17 +135,21 @@ module FglPdf
         out
       end
 
+      def pcx_mono_test(bytes)
+        pal = bytes.byteslice(16, 6).unpack('C6')
+        # Most monochrome PCX files leave the header palette zeroed: 0 = black, 1 = white.
+        zero_black = pal.all?(&:zero?) || dark?(*pal[0, 3])
+        one_black = !pal.all?(&:zero?) && dark?(*pal[3, 3])
+        lambda do |line, x, _bpl|
+          bit = (line[x >> 3] >> (7 - (x & 7))) & 1
+          bit.zero? ? zero_black : one_black
+        end
+      end
+
       # Returns a lambda (line_bytes, x, bytes_per_line) -> black?
       def pcx_black_test(bytes, bpp, planes)
         if bpp == 1 && planes == 1
-          pal = bytes.byteslice(16, 6).unpack('C6')
-          # Most monochrome PCX files leave the header palette zeroed: 0 = black, 1 = white.
-          zero_black = pal.all?(&:zero?) || dark?(*pal[0, 3])
-          one_black = !pal.all?(&:zero?) && dark?(*pal[3, 3])
-          lambda do |line, x, _bpl|
-            bit = (line[x >> 3] >> (7 - (x & 7))) & 1
-            bit.zero? ? zero_black : one_black
-          end
+          pcx_mono_test(bytes)
         elsif bpp == 8 && planes == 1
           pal_bytes = bytes.bytesize > 769 && bytes.getbyte(-769) == 0x0C ? bytes.byteslice(-768, 768) : nil
           raise DecodeError, '8-bit PCX without palette' unless pal_bytes

@@ -30,7 +30,7 @@ Style/Documentation:
 Layout/LineLength:
   Max: 120
 Naming/MethodParameterName:
-  AllowedNames: [x, y, u, v, w, h, dx, dy, ax, ay, k, id, io]
+  AllowedNames: [x, y, u, v, w, h, dx, dy, ax, ay, k, id, io, at]
 # Drawables deliberately use :length/:size members (dots along the advance, em size).
 Lint/StructNewOverride:
   Exclude:
