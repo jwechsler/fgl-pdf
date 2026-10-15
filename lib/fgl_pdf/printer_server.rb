@@ -49,6 +49,7 @@ module FglPdf
       @server = TCPServer.new(host, @requested_port)
       @stopping = false
       logger.info("fgl-printer listening on #{host}:#{port}, spooling to #{spool.dir}")
+      log_fonts
       @accept_thread = Thread.new { accept_loop }
       self
     end
@@ -102,6 +103,11 @@ module FglPdf
       end
     rescue IOError, Errno::EBADF, Errno::EINVAL
       nil # listening socket closed by #stop
+    end
+
+    def log_fonts
+      faces = (3..6).map { |id| "RTF#{id}=#{File.basename(@config.ttf_path(id))}" }
+      logger.info("TrueType fonts: #{faces.join(' ')}")
     end
 
     def handle(socket, id)

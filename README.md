@@ -141,7 +141,7 @@ counter are protected with `flock`. An index line looks like:
 | `--dpi N`         | `FGL_PDF_DPI`        | `300`       | Printer resolution (dots per inch) |
 | `--width-in IN`   | `FGL_PDF_WIDTH_IN`   | `2.0`       | Stock width across the print head |
 | `--length-in IN`  | `FGL_PDF_LENGTH_IN`  | `5.5`       | Stock length (feed direction) |
-| `--font-dir DIR`  | `FGL_PDF_FONT_DIR`   | —           | Verdana overrides for TrueType fonts 3–6: `verdana.ttf`, `verdanab.ttf`, `verdanai.ttf`, `verdanaz.ttf` (case-insensitive) |
+| `--font-dir DIR`  | `FGL_PDF_FONT_DIR`   | —           | Directory with Verdana files for TrueType fonts 3–6 (see [Fonts](#fonts)) |
 | `--strict`        | `FGL_PDF_STRICT`     | off         | Raise on unknown/malformed commands instead of warning |
 | `--annotate`      | `FGL_PDF_ANNOTATE`   | off         | Add diagnostics (warnings) to the PDF |
 | `--debug-grid`    | `FGL_PDF_DEBUG_GRID` | off         | Overlay a dot-coordinate grid |
@@ -152,9 +152,45 @@ counter are protected with `flock`. An index line looks like:
 
 Boolean variables accept `1`, `true`, `yes`, `on`. Flags override the environment.
 
-Without `--font-dir`, TrueType fonts 1–6 use the bundled DejaVu Sans family (the closest
-freely redistributable match to Verdana), so text widths differ slightly from a printer
-with Verdana loaded.
+## Fonts
+
+Boca printers carry TrueType fonts selected with `<RTFn,pt>`; ids 3–6 are commonly the
+Verdana family. Verdana can't be redistributed, so the gem ships **DejaVu Sans** (a close,
+freely licensed match) and uses it unless you supply Verdana. With DejaVu, text is slightly
+wider than on the printer, which matters for centred (`<CTR>`) and right-justified fields.
+
+To render with real Verdana, put your copies in a directory and pass it as `--font-dir DIR`
+(both executables), `FGL_PDF_FONT_DIR=DIR`, or `FglPdf::Config.new(font_dir: DIR)`. File
+names are matched case-insensitively; any of these spellings works:
+
+| FGL font | Style | Windows | macOS | Linux (msttcorefonts) |
+|---|---|---|---|---|
+| `<RTF3,pt>` | regular | `verdana.ttf` | `Verdana.ttf` | `Verdana.ttf` |
+| `<RTF4,pt>` | bold | `verdanab.ttf` | `Verdana Bold.ttf` | `Verdana_Bold.ttf` |
+| `<RTF5,pt>` | italic | `verdanai.ttf` | `Verdana Italic.ttf` | `Verdana_Italic.ttf` |
+| `<RTF6,pt>` | bold italic | `verdanaz.ttf` | `Verdana Bold Italic.ttf` | `Verdana_Bold_Italic.ttf` |
+
+Where to find them: `C:\Windows\Fonts` on Windows, `/System/Library/Fonts/Supplemental` on
+macOS (pass that directory directly), `/usr/share/fonts/truetype/msttcorefonts` on Linux.
+Missing files fall back to DejaVu individually. `fgl-printer` logs the mapping at startup:
+
+```
+INFO  TrueType fonts: RTF3=Verdana.ttf RTF4=Verdana Bold.ttf RTF5=Verdana Italic.ttf RTF6=Verdana Bold Italic.ttf
+```
+
+In Docker, mount the directory and set the variable:
+
+```sh
+docker run --rm -p 9100:9100 -v "$PWD/tickets:/tickets" \
+  -v /System/Library/Fonts/Supplemental:/fonts:ro -e FGL_PDF_FONT_DIR=/fonts fgl-printer
+```
+
+For any other font id or face, map it explicitly in Ruby:
+`FglPdf::Config.new(ttf_map: { 7 => '/path/Face.ttf' })`.
+
+The resident bitmap fonts (`<F1>`–`<F13>`) are not replaceable: they are drawn with the
+standard PDF fonts (Helvetica, Courier, Times) scaled to each Boca font's glyph size, so
+positions are exact and letter shapes approximate.
 
 ## Supported FGL
 
@@ -194,8 +230,8 @@ closely as possible and reported, never silently dropped.
     bottom row of the stock stays on the ticket; `<VX>` grows rightward, `<BX>` inward.
   - Inline `<G>` graphics follow the current rotation.
   - Resident bitmap fonts are approximated with Helvetica/Courier/Times scaled to each
-    font's glyph size; TrueType ids 3–6 map to bundled DejaVu Sans (regular, bold,
-    oblique, bold oblique) unless `FGL_PDF_FONT_DIR` provides Verdana files.
+    font's glyph size; TrueType ids 3–6 use bundled DejaVu Sans unless Verdana is
+    supplied (see [Fonts](#fonts)).
 
 ## License
 

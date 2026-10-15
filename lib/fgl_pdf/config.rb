@@ -75,20 +75,31 @@ module FglPdf
       ttf_map[Integer(id)]
     end
 
+    # Verdana file names a font_dir may hold for TrueType ids 3–6, matched case-insensitively:
+    # Windows (verdanab.ttf), macOS Supplemental fonts ("Verdana Bold.ttf") and the Linux
+    # msttcorefonts package (Verdana_Bold.ttf).
+    VERDANA_FILES = {
+      3 => ['verdana.ttf'],
+      4 => ['verdanab.ttf', 'verdana bold.ttf', 'verdana_bold.ttf'],
+      5 => ['verdanai.ttf', 'verdana italic.ttf', 'verdana_italic.ttf'],
+      6 => ['verdanaz.ttf', 'verdana bold italic.ttf', 'verdana_bold_italic.ttf']
+    }.freeze
+
     private
 
-    # A font_dir may contain Verdana-family files that override the DejaVu defaults:
-    # verdana.ttf, verdanab.ttf, verdanai.ttf, verdanaz.ttf (Windows names).
     def build_ttf_map(font_dir, explicit)
       map = DEFAULT_TTF_FILES.transform_values { |f| File.join(FONT_DIR, f) }
-      if font_dir
-        { 3 => 'verdana.ttf', 4 => 'verdanab.ttf', 5 => 'verdanai.ttf', 6 => 'verdanaz.ttf' }.each do |id, file|
-          path = Dir.glob(File.join(font_dir, '*')).find { |p| File.basename(p).casecmp?(file) }
-          map[id] = path if path
-        end
-      end
+      map.merge!(verdana_overrides(font_dir)) if font_dir
       map.merge!(explicit.transform_keys { |k| Integer(k) }) if explicit
       map
+    end
+
+    def verdana_overrides(font_dir)
+      files = Dir.glob(File.join(font_dir, '*'))
+      VERDANA_FILES.each_with_object({}) do |(id, names), found|
+        path = files.find { |f| names.any? { |n| File.basename(f).casecmp?(n) } }
+        found[id] = path if path
+      end
     end
   end
 end
