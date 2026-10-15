@@ -1,0 +1,81 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Renders a file of Boca FGL to PDF: one PDF per ticket, or one multi-page PDF with --single.
+
+lib = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib) if File.directory?(lib) && !$LOAD_PATH.include?(lib)
+
+require 'optparse'
+require 'fileutils'
+require 'fgl_pdf'
+
+options = { out: '.', single: false, config: {} }
+
+parser = OptionParser.new do |o|
+  o.banner = 'Usage: fgl2pdf INPUT.fgl|- [options]'
+  o.separator ''
+  o.separator 'Writes BASENAME-001.pdf, BASENAME-002.pdf, … (or BASENAME.pdf with --single).'
+  o.separator 'INPUT "-" reads stdin (BASENAME "stdin"). Warnings go to stderr.'
+  o.separator ''
+  o.on('-o', '--out DIR', 'Output directory (default: current directory)') { |v| options[:out] = v }
+  o.on('--single', 'Write all tickets into one multi-page PDF') { options[:single] = true }
+  o.on('--dpi DPI', Integer, 'Printer resolution (default 300)') { |v| options[:config][:dpi] = v }
+  o.on('--width-in IN', Float, 'Ticket width across the head (default 2.0)') { |v| options[:config][:width_in] = v }
+  o.on('--length-in IN', Float, 'Ticket length (default 5.5)') { |v| options[:config][:length_in] = v }
+  o.on('--font-dir DIR', 'Directory with verdana*.ttf overrides') { |v| options[:config][:font_dir] = v }
+  o.on('--debug-grid', 'Draw a dot grid on each ticket') { options[:config][:debug_grid] = true }
+  o.on('--annotate', 'Annotate the PDF with FGL diagnostics') { options[:config][:annotate] = true }
+  o.on('--strict', 'Fail on unknown or malformed commands') { options[:config][:strict] = true }
+  o.on('-h', '--help', 'Show this help') do
+    puts o
+    exit
+  end
+end
+
+begin
+  parser.parse!(ARGV)
+  raise OptionParser::NeedlessArgument, ARGV[1..].join(' ') if ARGV.size > 1
+  raise OptionParser::MissingArgument, 'INPUT' if ARGV.empty?
+rescue OptionParser::ParseError => e
+  warn "fgl2pdf: #{e.message}"
+  warn parser
+  exit 64
+end
+
+input = ARGV.first
+basename = input == '-' ? 'stdin' : File.basename(input).sub(/\.fgl\z/i, '')
+
+begin
+  bytes = input == '-' ? $stdin.binmode.read : File.binread(input)
+  config = FglPdf::Config.from_env(**options[:config])
+  interpreter = FglPdf::Interpreter.new(config: config, logo_store: FglPdf::LogoStore.new,
+                                        counter: FglPdf::Counter.new)
+  tickets = interpreter.feed(bytes)
+  warn "fgl2pdf: #{basename}: discarding trailing data without a print command" if interpreter.pending?
+
+  if tickets.empty?
+    warn "fgl2pdf: no tickets found in #{input} (no print command such as <p> or <q>)"
+    exit 1
+  end
+
+  labels = tickets.each_index.map { |i| format('%<base>s-%<n>03d', base: basename, n: i + 1) }
+  tickets.zip(labels).each { |ticket, label| ticket.warnings.each { |w| warn "#{label}: #{w}" } }
+
+  FileUtils.mkdir_p(options[:out])
+  renderer = FglPdf::Renderer::Pdf.new(config)
+  if options[:single]
+    path = File.join(options[:out], "#{basename}.pdf")
+    File.binwrite(path, renderer.render_many(tickets))
+    puts path
+  else
+    tickets.zip(labels).each do |ticket, label|
+      path = File.join(options[:out], "#{label}.pdf")
+      File.binwrite(path, renderer.render(ticket))
+      puts path
+    end
+  end
+rescue FglPdf::Error, SystemCallError => e
+  warn "fgl2pdf: #{e.message}"
+  exit 2
+end

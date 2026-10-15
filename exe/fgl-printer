@@ -1,0 +1,75 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Virtual Boca ticket printer: listens for raw FGL on TCP and spools each ticket to a PDF.
+
+lib = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib) if File.directory?(lib) && !$LOAD_PATH.include?(lib)
+
+require 'optparse'
+require 'logger'
+require 'fgl_pdf'
+require 'fgl_pdf/printer_server'
+
+options = {
+  host: '0.0.0.0',
+  port: Integer(ENV.fetch('FGL_PDF_PORT', 9100)),
+  out: ENV.fetch('FGL_PDF_OUT', nil),
+  config: {}
+}
+
+parser = OptionParser.new do |o|
+  o.banner = 'Usage: fgl-printer --out DIR [options]'
+  o.separator ''
+  o.separator 'Listens for FGL (as sent to a Boca printer on port 9100) and writes each ticket'
+  o.separator 'to DIR/NNNNNN.pdf, with the source bytes in NNNNNN.fgl and a log in index.jsonl.'
+  o.separator ''
+  o.on('--out DIR', 'Spool directory (env FGL_PDF_OUT; required)') { |v| options[:out] = v }
+  o.on('--host HOST', 'Address to bind (default 0.0.0.0)') { |v| options[:host] = v }
+  o.on('--port PORT', Integer, 'TCP port (default 9100, env FGL_PDF_PORT)') { |v| options[:port] = v }
+  o.on('--dpi DPI', Integer, 'Printer resolution (default 300)') { |v| options[:config][:dpi] = v }
+  o.on('--width-in IN', Float, 'Ticket width across the head (default 2.0)') { |v| options[:config][:width_in] = v }
+  o.on('--length-in IN', Float, 'Ticket length (default 5.5)') { |v| options[:config][:length_in] = v }
+  o.on('--font-dir DIR', 'Directory with verdana*.ttf overrides') { |v| options[:config][:font_dir] = v }
+  o.on('--debug-grid', 'Draw a dot grid on each ticket') { options[:config][:debug_grid] = true }
+  o.on('--annotate', 'Annotate the PDF with FGL diagnostics') { options[:config][:annotate] = true }
+  o.on('--strict', 'Fail on unknown or malformed commands') { options[:config][:strict] = true }
+  o.on('-v', '--verbose', 'Log status queries and per-ticket warnings') { options[:verbose] = true }
+  o.on('-h', '--help', 'Show this help') do
+    puts o
+    exit
+  end
+end
+
+begin
+  parser.parse!(ARGV)
+  raise OptionParser::MissingArgument, '--out DIR (or FGL_PDF_OUT)' if options[:out].to_s.empty?
+rescue OptionParser::ParseError => e
+  warn "fgl-printer: #{e.message}"
+  warn parser
+  exit 64
+end
+
+$stdout.sync = true
+logger = Logger.new($stdout)
+logger.level = options[:verbose] ? Logger::DEBUG : Logger::INFO
+logger.formatter = proc { |sev, time, _prog, msg| "#{time.strftime('%F %T')} #{sev.ljust(5)} #{msg}\n" }
+
+config = FglPdf::Config.from_env(**options[:config], logger: logger)
+server = FglPdf::PrinterServer.new(config: config, out_dir: options[:out], host: options[:host],
+                                   port: options[:port], logger: logger)
+
+# Trap handlers may not take locks (Logger, server state), so hand the signal to the main thread.
+signals = Queue.new
+%w[INT TERM].each { |sig| Signal.trap(sig) { signals << sig } }
+
+begin
+  server.start
+rescue SystemCallError => e
+  logger.error("cannot listen on #{options[:host]}:#{options[:port]}: #{e.message}")
+  exit 1
+end
+
+sig = signals.pop
+logger.info("received SIG#{sig}, shutting down")
+server.stop

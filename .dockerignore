@@ -1,0 +1,12 @@
+.git
+.github
+.bundle
+spec
+tmp
+pkg
+coverage
+*.gem
+tickets
+Gemfile.lock
+Dockerfile
+.dockerignore
