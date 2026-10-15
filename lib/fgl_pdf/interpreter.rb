@@ -99,7 +99,8 @@ module FglPdf
     private
 
     def new_ticket(items = [])
-      Ticket.new(width_dots: config.width_dots, length_dots: config.length_dots, items: items)
+      Ticket.new(width_dots: config.width_dots, length_dots: config.length_dots,
+                 print_width_dots: config.print_width_dots, items: items)
     end
 
     def warn(message)
@@ -398,6 +399,10 @@ module FglPdf
         box = visible_bbox(item)
         ticket.warn(off_page_message(item, box, ticket)) unless ticket.inside?(box)
       end
+      ticket.past_print_width_items.each do |item|
+        box = visible_bbox(item)
+        ticket.warn(past_print_width_message(item, box, ticket)) if box[3] > ticket.print_width_dots
+      end
       @emitted << ticket
       @copies.times { counter.increment! }
       kept = hold ? ticket.items.grep(Image) : []
@@ -427,6 +432,11 @@ module FglPdf
       parts << "y #{fmt(min_y)}..#{fmt(max_y)} > #{ticket.width_dots}" if max_y > ticket.width_dots
       parts << "y #{fmt(min_y)}..#{fmt(max_y)} < 0" if min_y.negative?
       "#{describe(item)} extends off the ticket (#{parts.join(', ')})"
+    end
+
+    def past_print_width_message(item, box, ticket)
+      "#{describe(item)} extends past the print width " \
+        "(y #{fmt(box[1])}..#{fmt(box[3])} > #{ticket.print_width_dots})"
     end
 
     def fmt(value)

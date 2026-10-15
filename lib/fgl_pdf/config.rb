@@ -18,18 +18,22 @@ module FglPdf
       6 => 'DejaVuSans-BoldOblique.ttf'
     }.freeze
 
-    attr_accessor :dpi, :feed_dpi, :width_in, :length_in, :strict, :annotate, :debug_grid, :logger
+    attr_accessor :dpi, :feed_dpi, :width_in, :length_in, :print_width, :strict, :annotate, :debug_grid,
+                  :logger
     attr_reader :ttf_map
 
     # dpi: head resolution (FGL rows). feed_dpi: dots per inch along the feed (FGL columns);
     # defaults to dpi. Real Bocas can be finer: a 300 DPI Mini reports PRINT LENGTH=1689 on
     # 5.5" stock, i.e. 307.1 dots per inch along the feed.
-    def initialize(dpi: 300, feed_dpi: nil, width_in: 2.0, length_in: 5.5, ttf_map: nil, font_dir: nil,
-                   strict: false, annotate: false, debug_grid: false, logger: nil)
+    # print_width: rows the head actually images (self-test PRINT WIDTH, e.g. 576 on 2" stock);
+    # defaults to the full stock width.
+    def initialize(dpi: 300, feed_dpi: nil, width_in: 2.0, length_in: 5.5, print_width: nil, ttf_map: nil,
+                   font_dir: nil, strict: false, annotate: false, debug_grid: false, logger: nil)
       @dpi = Integer(dpi)
       @feed_dpi = Float(feed_dpi || dpi)
       @width_in = Float(width_in)
       @length_in = Float(length_in)
+      @print_width = print_width && Integer(print_width)
       @strict = strict
       @annotate = annotate
       @debug_grid = debug_grid
@@ -44,6 +48,7 @@ module FglPdf
       opts[:feed_dpi] = env['FGL_PDF_FEED_DPI'] if env['FGL_PDF_FEED_DPI']
       opts[:width_in] = env['FGL_PDF_WIDTH_IN'] if env['FGL_PDF_WIDTH_IN']
       opts[:length_in] = env['FGL_PDF_LENGTH_IN'] if env['FGL_PDF_LENGTH_IN']
+      opts[:print_width] = env['FGL_PDF_PRINT_WIDTH'] if env['FGL_PDF_PRINT_WIDTH']
       opts[:font_dir] = env['FGL_PDF_FONT_DIR'] if env['FGL_PDF_FONT_DIR']
       opts[:strict] = truthy?(env['FGL_PDF_STRICT']) if env['FGL_PDF_STRICT']
       opts[:annotate] = truthy?(env['FGL_PDF_ANNOTATE']) if env['FGL_PDF_ANNOTATE']
@@ -58,6 +63,11 @@ module FglPdf
     # Dots across the head (FGL rows).
     def width_dots
       (width_in * dpi).round
+    end
+
+    # Rows the head images; rows from here to width_dots stay blank on a real printer.
+    def print_width_dots
+      [print_width || width_dots, width_dots].min
     end
 
     # Dots along the feed direction (FGL columns).

@@ -7,11 +7,12 @@ module FglPdf
   # diagnostics. The interpreter builds these; the renderer only draws them.
   class Ticket
     attr_reader :items, :warnings
-    attr_accessor :width_dots, :length_dots, :copies, :raw
+    attr_accessor :width_dots, :length_dots, :print_width_dots, :copies, :raw
 
-    def initialize(width_dots:, length_dots:, items: [], warnings: [], copies: 1, raw: nil)
+    def initialize(width_dots:, length_dots:, print_width_dots: nil, items: [], warnings: [], copies: 1, raw: nil)
       @width_dots = width_dots
       @length_dots = length_dots
+      @print_width_dots = print_width_dots || width_dots
       @items = items
       @warnings = warnings
       @copies = copies
@@ -35,6 +36,13 @@ module FglPdf
     def inside?(bbox)
       min_x, min_y, max_x, max_y = bbox
       min_x >= 0 && min_y >= 0 && max_x <= length_dots && max_y <= width_dots
+    end
+
+    # Drawables on the page that reach rows the head does not image.
+    def past_print_width_items
+      return [] if print_width_dots >= width_dots
+
+      items.select { |i| i.respond_to?(:bbox) && i.bbox[3] > print_width_dots && inside?(i.bbox) }
     end
   end
 

@@ -118,6 +118,17 @@ RSpec.describe FglPdf::Renderer::Pdf do
       expect_bbox_near(dark_bbox(rasterize(pdf).first), [1548, 100, 1606, 140], tol: 1)
     end
 
+    it 'clips drawing to the print width and tints the rows the head does not image' do
+      cfg = FglPdf::Config.new(print_width: 576)
+      t = FglPdf::Ticket.new(width_dots: cfg.width_dots, length_dots: cfg.length_dots,
+                             print_width_dots: cfg.print_width_dots,
+                             items: [FglPdf::Rect.new(x: 100, y: 500, w: 50, h: 100)])
+      img = rasterize(described_class.new(cfg).render(t)).first
+      expect_bbox_near(dark_bbox(img), [100, 500, 150, 576], tol: 1)
+      expect(dark?(img, 120, 590)).to be(false)
+      expect(img.dark_bbox([0, 580, 1650, 600])).to be_nil
+    end
+
     it 'renders one page per ticket with render_many' do
       pdf = renderer.render_many([ticket, ticket(resident_text('B')), ticket])
       expect(reader(pdf).page_count).to eq(3)

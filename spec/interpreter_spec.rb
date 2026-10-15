@@ -374,6 +374,22 @@ RSpec.describe FglPdf::Interpreter do
     end
   end
 
+  describe 'print width' do
+    it 'warns about items reaching rows the head does not image' do
+      config.print_width = 576
+      t = ticket('<RC560,100><F3>LOW<RC10,100>HIGH<RC600,10><LT600><HX5><p>')
+      expect(t.print_width_dots).to eq(576)
+      expect(t.warnings).to eq(['Text "LOW" extends past the print width (y 560..593 > 576)',
+                                'Line extends past the print width (y 0..600 > 576)'])
+    end
+
+    it 'does not warn twice for items already off the ticket' do
+      config.print_width = 576
+      t = ticket('<RC580,100><F3>OFF<p>')
+      expect(t.warnings).to eq(['Text "OFF" extends off the ticket (y 580..613 > 600)'])
+    end
+  end
+
   describe 'sample order fixtures' do
     it 'renders the general admission sample order as a ticket and a receipt' do
       run(logo_download)

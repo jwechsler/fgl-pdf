@@ -22,6 +22,8 @@ module FglPdf
       GRID = 'D0D0D0'
       GRID_LABEL = 'A0A0A0'
       WARNING = 'D00000'
+      # Light tint for stock rows the head does not image (past the print width).
+      UNPRINTABLE = 'EEEEEE'
 
       # Fallback cap-height / em for AFM faces whose metrics we cannot read.
       DEFAULT_CAP_HEIGHT = 0.7
@@ -85,7 +87,7 @@ module FglPdf
         @page_h = size[1]
         doc.start_new_page(size: size, margin: 0)
         draw_grid(ticket) if config.debug_grid
-        ticket.items.each { |item| draw_item(item) }
+        clip_to_print_width(ticket, size) { ticket.items.each { |item| draw_item(item) } }
         draw_annotations(ticket) if config.annotate && !ticket.warnings.empty?
       ensure
         @pdf = nil
@@ -102,6 +104,20 @@ module FglPdf
         when Placeholder then draw_placeholder(item)
         else config.logger.warn("fgl_pdf: cannot render #{item.class}")
         end
+      end
+
+      # Draws the block clipped to the rows the head images, and tints the rest of the stock.
+      def clip_to_print_width(ticket, size)
+        printable = ticket.print_width_dots || ticket.width_dots
+        return yield if printable >= ticket.width_dots
+
+        pdf.save_graphics_state do
+          pdf.rectangle([0, @page_h], size[0], printable * k)
+          pdf.add_content('W n')
+          yield
+        end
+        band = @page_h - (printable * k)
+        with_fill(UNPRINTABLE) { pdf.fill_rectangle([0, band], size[0], band) }
       end
 
       # --- frame helpers ----------------------------------------------------------------
