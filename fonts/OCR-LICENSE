@@ -1,0 +1,58 @@
+OCRA.ttf and OCRB.ttf are from Matthew Skala's OCR fonts, version 0.3.1
+(https://tsukurimashou.org/ocr.php.en, https://tsukurimashou.org/files/ocr-0.3.1.zip).
+Matthew Skala releases his work on them to the public domain and makes no copyright
+claim. The notices from the fonts' sources follow.
+
+OCR-A (msk-ocra.mp)
+-------------------
+
+METAFONT-84 Definition for OCR-A Optical Character Recognition Font
+(C) Copyright 1988, 1989 Richard B. Wales.  All Rights Reserved.
+
+Coded by:
+
+	Richard B. Wales
+	Computer Science Department
+	University of California, Los Angeles (UCLA)
+	Los Angeles, California 90024-1596 (USA)
+
+Source of information:
+
+	ANSI Standard X3.17-1977 (approved January 20, 1977, by the
+	American National Standards Institute, Inc.)
+
+Based on an earlier version by:
+
+	Tor Lillqvist
+	Computing Services
+	Technical Research Centre of Finland
+
+Terms of copyright:
+
+	You may do anything you wish with this font definition, as
+	long as you retain the original copyright notice and credit
+	information intact in the source, and do not charge any fee
+	for distribution of either the source or any fonts derived
+	from it beyond a reasonable copying or communications charge.
+
+Disclaimer:
+
+	While I have made every reasonable effort to make this font
+	definition correspond to the specifications in ANSI Standard
+	X3.17-1977, I do not guarantee that it conforms fully to all
+	official requirements for the OCR-A font, nor that the char-
+	acters produced from this definition will be usable by any
+	particular OCR hardware and/or software.  It is the respon-
+	sibility of the user to determine the usability of this font
+	definition for his application.  Use of this font definition
+	is totally at the user's own risk and without any warranty
+	whatsoever, express or implied.  Neither the author nor his
+	employer will be responsible for any damages, including
+	secondary or consequential damages, arising out of the use of
+	this font definition.
+
+OCR-B (msk-ocrb10.mp)
+---------------------
+
+Copyright 1995, 2010 Norbert Schwarz
+You may freely use, modify and/or distribute this file, without limitation.

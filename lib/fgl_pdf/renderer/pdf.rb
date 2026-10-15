@@ -183,12 +183,14 @@ module FglPdf
       # Each character is drawn in its own cell: cap height scaled to glyph_h, width scaled
       # uniformly so that 'H' spans glyph_w (wider glyphs are squeezed to glyph_w), centred
       # in the glyph box, top of capitals at v = 0 and baseline at v = glyph_h.
+      # Resident TrueType faces (OCR-A/B) are drawn by #draw_resident_ttf_run instead.
       def draw_resident_text(item, string)
         face = item.face || 'Helvetica'
         glyph_h = item.glyph_h.to_f
         glyph_w = item.glyph_w.to_f
         cell_w = (item.cell_w || glyph_w).to_f
         return if glyph_h <= 0 || glyph_w <= 0
+        return draw_resident_ttf_run(winansi(string), face, glyph_w, glyph_h, cell_w) if Fonts.ttf_face?(face)
 
         size = glyph_h / cap_height(face)
         base_scale = (glyph_w / (ref_width(face) * size)).clamp(MIN_SCALE, MAX_SCALE)
@@ -214,6 +216,20 @@ module FglPdf
         pdf.horizontal_text_scaling(scale * 100) do
           pdf.character_spacing((cell_w / scale) - advance) do
             pdf.draw_text(text, at: [offset, -glyph_h])
+          end
+        end
+      end
+
+      # A real font for a resident face: em = glyph_h × Fonts.em(face), natural glyph
+      # proportions, one advance per cell (centred on the glyph box), and the font's
+      # ascender line at v = 0.
+      def draw_resident_ttf_run(text, face, glyph_w, glyph_h, cell_w)
+        size = glyph_h * Fonts.em(face)
+        ascender, = em_fractions(face)
+        advance = ref_width(face) * size
+        pdf.font(face, size: size) do
+          pdf.character_spacing(cell_w - advance) do
+            pdf.draw_text(text, at: [(glyph_w - advance) / 2.0, -(ascender * size)])
           end
         end
       end

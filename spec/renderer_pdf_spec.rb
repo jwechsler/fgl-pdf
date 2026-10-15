@@ -128,10 +128,27 @@ RSpec.describe FglPdf::Renderer::Pdf do
       expect(run_text(pdf)).to include('café?€')
     end
 
-    it 'sizes resident glyphs to glyph_h (cap height) within the cell' do
-      img = rasterize(renderer.render(ticket(resident_text('HH', at: [200, 100], font: 6)))).first
-      f = FglPdf::Fonts.resident(6)
-      expect_bbox_near(dark_bbox(img), [200, 100, 200 + f.box_w + f.glyph_w, 100 + f.glyph_h], tol: 3)
+    it 'sizes stand-in resident glyphs to glyph_h (cap height) within the cell' do
+      img = rasterize(renderer.render(ticket(resident_text('HH', at: [200, 100], font: 2)))).first
+      f = FglPdf::Fonts.resident(2)
+      expect_bbox_near(dark_bbox(img), [200, 100, 200 + f.box_w + f.glyph_w, 100 + f.glyph_h])
+    end
+
+    # Sizes measured on a ticket printed by a real Boca (see FglPdf::Fonts).
+    it 'draws OCR-A (F7) with capitals filling glyph_h, one glyph per cell' do
+      img = rasterize(renderer.render(ticket(resident_text('HH', at: [200, 100], font: 7)))).first
+      expect_bbox_near(dark_bbox(img), [198, 101, 237, 130])
+    end
+
+    it 'draws OCR-B (F3) from the top of the digits to the bottom of the descenders in glyph_h' do
+      img = rasterize(renderer.render(ticket(resident_text('Hy0', at: [200, 100], font: 3)))).first
+      expect_bbox_near(dark_bbox(img), [202, 101, 256, 131])
+    end
+
+    it 'draws OCR text as an extractable run' do
+      pdf = renderer.render(ticket(resident_text('EXPLORE1026 GEN35'),
+                                   resident_text('DOE, JOHN', at: [100, 300], font: 4)))
+      expect(run_text(pdf)).to include('EXPLORE1026GEN35', 'DOE,JOHN')
     end
 
     it 'draws extractable TTF text with the baseline at ascender x size' do

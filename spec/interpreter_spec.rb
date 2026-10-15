@@ -32,7 +32,7 @@ RSpec.describe FglPdf::Interpreter do
     it 'places resident text at the cursor with font metrics' do
       text = texts(ticket('<RC10,100><F3>AB<p>')).first
       expect(text.to_h.slice(:x, :y, :rotation, :string, :font_kind, :face)).to eq(
-        x: 100, y: 10, rotation: :NR, string: 'AB', font_kind: :resident, face: 'Helvetica'
+        x: 100, y: 10, rotation: :NR, string: 'AB', font_kind: :resident, face: FglPdf::Fonts::OCR_B
       )
       expect([text.cell_w, text.glyph_w, text.glyph_h, text.length, text.height]).to eq([20, 17, 31, 40, 33])
     end

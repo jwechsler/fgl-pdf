@@ -178,19 +178,25 @@ Missing files fall back to DejaVu individually. `fgl-printer` logs the mapping a
 INFO  TrueType fonts: RTF3=Verdana.ttf RTF4=Verdana Bold.ttf RTF5=Verdana Italic.ttf RTF6=Verdana Bold Italic.ttf
 ```
 
-In Docker, mount the directory and set the variable:
+In Docker, mount the directory and set the variable. Docker Desktop on macOS can't mount
+`/System`, so copy the files somewhere shared first:
 
 ```sh
+mkdir -p fonts-local && cp /System/Library/Fonts/Supplemental/Verdana*.ttf fonts-local/
 docker run --rm -p 9100:9100 -v "$PWD/tickets:/tickets" \
-  -v /System/Library/Fonts/Supplemental:/fonts:ro -e FGL_PDF_FONT_DIR=/fonts fgl-printer
+  -v "$PWD/fonts-local:/fonts:ro" -e FGL_PDF_FONT_DIR=/fonts fgl-printer
 ```
 
 For any other font id or face, map it explicitly in Ruby:
 `FglPdf::Config.new(ttf_map: { 7 => '/path/Face.ttf' })`.
 
-The resident bitmap fonts (`<F1>`–`<F13>`) are not replaceable: they are drawn with the
-standard PDF fonts (Helvetica, Courier, Times) scaled to each Boca font's glyph size, so
-positions are exact and letter shapes approximate.
+The resident bitmap fonts (`<F1>`–`<F13>`) are not replaceable. The OCR fonts (`<F3>`,
+`<F6>`, `<F9>` OCR-B; `<F4>`, `<F7>` OCR-A) use the bundled OCR-A and OCR-B fonts, sized to
+match a real Boca print: OCR-A capitals fill the glyph height, and OCR-B's glyph height runs
+from the top of the digits to the bottom of the descenders, each at its natural width on the
+Boca's character pitch. The others are drawn with the standard PDF fonts (Helvetica, Courier,
+Times) scaled to each Boca font's glyph size, so positions are exact and letter shapes
+approximate.
 
 ## Supported FGL
 
@@ -229,14 +235,15 @@ closely as possible and reported, never silently dropped.
   - `<LTn><HXlen>` thickness grows *upward* from the row (`row-n … row`), so a rule at the
     bottom row of the stock stays on the ticket; `<VX>` grows rightward, `<BX>` inward.
   - Inline `<G>` graphics follow the current rotation.
-  - Resident bitmap fonts are approximated with Helvetica/Courier/Times scaled to each
-    font's glyph size; TrueType ids 3–6 use bundled DejaVu Sans unless Verdana is
-    supplied (see [Fonts](#fonts)).
+  - Resident OCR fonts use bundled OCR-A/OCR-B; the other resident bitmap fonts are
+    approximated with Helvetica/Courier/Times scaled to each font's glyph size; TrueType
+    ids 3–6 use bundled DejaVu Sans unless Verdana is supplied (see [Fonts](#fonts)).
 
 ## License
 
 GPL-3.0-or-later (see `LICENSE`). The bundled DejaVu fonts are under the DejaVu/Bitstream
-Vera license (`fonts/DejaVu-LICENSE`).
+Vera license (`fonts/DejaVu-LICENSE`). The bundled OCR-A and OCR-B fonts are Matthew Skala's
+public-domain versions; their source notices are in `fonts/OCR-LICENSE`.
 
 ## Development
 
