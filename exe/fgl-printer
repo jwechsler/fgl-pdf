@@ -28,6 +28,9 @@ parser = OptionParser.new do |o|
   o.on('--host HOST', 'Address to bind (default 0.0.0.0)') { |v| options[:host] = v }
   o.on('--port PORT', Integer, 'TCP port (default 9100, env FGL_PDF_PORT)') { |v| options[:port] = v }
   o.on('--dpi DPI', Integer, 'Printer resolution (default 300)') { |v| options[:config][:dpi] = v }
+  o.on('--feed-dpi DPI', Float, 'Dots per inch along the ticket (default: --dpi)') do |v|
+    options[:config][:feed_dpi] = v
+  end
   o.on('--width-in IN', Float, 'Ticket width across the head (default 2.0)') { |v| options[:config][:width_in] = v }
   o.on('--length-in IN', Float, 'Ticket length (default 5.5)') { |v| options[:config][:length_in] = v }
   o.on('--font-dir DIR', 'Directory with verdana*.ttf overrides') { |v| options[:config][:font_dir] = v }

@@ -63,14 +63,20 @@ module FglPdf
 
       attr_reader :pdf
 
+      # PDF points per dot across the head (rows, page y).
       def k
         config.pt_per_dot
+      end
+
+      # PDF points per dot along the feed (columns, page x).
+      def kx
+        config.pt_per_feed_dot
       end
 
       def page_size_pt(ticket)
         length = ticket&.length_dots || config.length_dots
         width = ticket&.width_dots || config.width_dots
-        [length * k, width * k]
+        [length * kx, width * k]
       end
 
       def draw_page(doc, ticket)
@@ -106,7 +112,7 @@ module FglPdf
         ax, ay = Geometry.advance(rotation)
         dx, dy = Geometry.down(rotation)
         pdf.save_graphics_state do
-          pdf.transformation_matrix(k * ax, -k * ay, -k * dx, k * dy, k * x, @page_h - (k * y))
+          pdf.transformation_matrix(kx * ax, -k * ay, -kx * dx, k * dy, kx * x, @page_h - (k * y))
           yield
         end
       end

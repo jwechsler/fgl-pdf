@@ -39,6 +39,16 @@ RSpec.describe FglPdf::Config do
     expect(config.ttf_path(4)).to eq(File.join(dir, 'verdanab.ttf'))
   end
 
+  it 'defaults feed_dpi to dpi' do
+    config = described_class.new(dpi: 200)
+    expect([config.feed_dpi, config.length_dots, config.width_dots]).to eq([200.0, 1100, 400])
+  end
+
+  it 'sizes the ticket length by feed_dpi from FGL_PDF_FEED_DPI' do
+    config = described_class.from_env({ 'FGL_PDF_FEED_DPI' => '310' })
+    expect([config.length_dots, config.width_dots]).to eq([1705, 600])
+  end
+
   it 'lets an explicit ttf_map override any id' do
     config = described_class.new(ttf_map: { '4' => '/fonts/custom-bold.ttf' })
     expect(config.ttf_path(4)).to eq('/fonts/custom-bold.ttf')

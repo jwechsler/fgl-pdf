@@ -109,6 +109,15 @@ RSpec.describe FglPdf::Renderer::Pdf do
       expect(page.attributes[:MediaBox].map(&:round)).to eq([0, 0, 396, 144])
     end
 
+    it 'keeps the physical size and fits more columns with a finer feed_dpi' do
+      cfg = FglPdf::Config.new(feed_dpi: 310)
+      rect = FglPdf::Rect.new(x: 1600, y: 100, w: 60, h: 40)
+      pdf = described_class.new(cfg).render(ticket(rect, config: cfg))
+      expect(reader(pdf).pages.first.attributes[:MediaBox].map(&:round)).to eq([0, 0, 396, 144])
+      # Rasterized at 300 dpi: columns shrink by 300/310, rows are unchanged.
+      expect_bbox_near(dark_bbox(rasterize(pdf).first), [1548, 100, 1606, 140], tol: 1)
+    end
+
     it 'renders one page per ticket with render_many' do
       pdf = renderer.render_many([ticket, ticket(resident_text('B')), ticket])
       expect(reader(pdf).page_count).to eq(3)

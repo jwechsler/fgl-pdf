@@ -18,12 +18,16 @@ module FglPdf
       6 => 'DejaVuSans-BoldOblique.ttf'
     }.freeze
 
-    attr_accessor :dpi, :width_in, :length_in, :strict, :annotate, :debug_grid, :logger
+    attr_accessor :dpi, :feed_dpi, :width_in, :length_in, :strict, :annotate, :debug_grid, :logger
     attr_reader :ttf_map
 
-    def initialize(dpi: 300, width_in: 2.0, length_in: 5.5, ttf_map: nil, font_dir: nil,
+    # dpi: head resolution (FGL rows). feed_dpi: dots per inch along the feed (FGL columns);
+    # defaults to dpi. Real Bocas can be finer: a 300 DPI Mini reports PRINT LENGTH=1689 on
+    # 5.5" stock, i.e. 307.1 dots per inch along the feed.
+    def initialize(dpi: 300, feed_dpi: nil, width_in: 2.0, length_in: 5.5, ttf_map: nil, font_dir: nil,
                    strict: false, annotate: false, debug_grid: false, logger: nil)
       @dpi = Integer(dpi)
+      @feed_dpi = Float(feed_dpi || dpi)
       @width_in = Float(width_in)
       @length_in = Float(length_in)
       @strict = strict
@@ -37,6 +41,7 @@ module FglPdf
     def self.from_env(env = ENV, **overrides)
       opts = {}
       opts[:dpi] = env['FGL_PDF_DPI'] if env['FGL_PDF_DPI']
+      opts[:feed_dpi] = env['FGL_PDF_FEED_DPI'] if env['FGL_PDF_FEED_DPI']
       opts[:width_in] = env['FGL_PDF_WIDTH_IN'] if env['FGL_PDF_WIDTH_IN']
       opts[:length_in] = env['FGL_PDF_LENGTH_IN'] if env['FGL_PDF_LENGTH_IN']
       opts[:font_dir] = env['FGL_PDF_FONT_DIR'] if env['FGL_PDF_FONT_DIR']
@@ -57,12 +62,17 @@ module FglPdf
 
     # Dots along the feed direction (FGL columns).
     def length_dots
-      (length_in * dpi).round
+      (length_in * feed_dpi).round
     end
 
-    # PDF points per printer dot.
+    # PDF points per printer dot across the head (rows).
     def pt_per_dot
       72.0 / dpi
+    end
+
+    # PDF points per printer dot along the feed (columns).
+    def pt_per_feed_dot
+      72.0 / feed_dpi
     end
 
     # Default narrow-bar width for barcodes (FGL guide: X2 at 200 dpi, X3 at 300+).

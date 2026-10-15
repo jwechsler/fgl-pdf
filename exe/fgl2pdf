@@ -21,6 +21,9 @@ parser = OptionParser.new do |o|
   o.on('-o', '--out DIR', 'Output directory (default: current directory)') { |v| options[:out] = v }
   o.on('--single', 'Write all tickets into one multi-page PDF') { options[:single] = true }
   o.on('--dpi DPI', Integer, 'Printer resolution (default 300)') { |v| options[:config][:dpi] = v }
+  o.on('--feed-dpi DPI', Float, 'Dots per inch along the ticket (default: --dpi)') do |v|
+    options[:config][:feed_dpi] = v
+  end
   o.on('--width-in IN', Float, 'Ticket width across the head (default 2.0)') { |v| options[:config][:width_in] = v }
   o.on('--length-in IN', Float, 'Ticket length (default 5.5)') { |v| options[:config][:length_in] = v }
   o.on('--font-dir DIR', 'Directory with verdana*.ttf overrides') { |v| options[:config][:font_dir] = v }

@@ -63,7 +63,7 @@ ticket counter used by `<PC>`/`<TC>`.
 ## fgl2pdf
 
 ```sh
-fgl2pdf INPUT.fgl [-o DIR] [--single] [--dpi N] [--width-in IN] [--length-in IN]
+fgl2pdf INPUT.fgl [-o DIR] [--single] [--dpi N] [--feed-dpi N] [--width-in IN] [--length-in IN]
                   [--font-dir DIR] [--debug-grid] [--annotate] [--strict]
 ```
 
@@ -139,6 +139,7 @@ counter are protected with `flock`. An index line looks like:
 | Flag              | Environment          | Default     | Meaning |
 |-------------------|----------------------|-------------|---------|
 | `--dpi N`         | `FGL_PDF_DPI`        | `300`       | Printer resolution (dots per inch) |
+| `--feed-dpi N`    | `FGL_PDF_FEED_DPI`   | `--dpi`     | Dots per inch along the ticket (FGL columns): the printer's PRINT LENGTH (self-test) ÷ stock length, e.g. 1689 / 5.5 = 307.1 on a Boca 300 DPI Mini |
 | `--width-in IN`   | `FGL_PDF_WIDTH_IN`   | `2.0`       | Stock width across the print head |
 | `--length-in IN`  | `FGL_PDF_LENGTH_IN`  | `5.5`       | Stock length (feed direction) |
 | `--font-dir DIR`  | `FGL_PDF_FONT_DIR`   | —           | Directory with Verdana files for TrueType fonts 3–6 (see [Fonts](#fonts)) |
