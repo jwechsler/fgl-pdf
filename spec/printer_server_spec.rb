@@ -95,6 +95,16 @@ RSpec.describe FglPdf::PrinterServer do
     wait_for { log.string.include?('(1 warnings) from 127.0.0.1:') }
   end
 
+  it 'keeps back-to-back short connections apart' do
+    start_server
+    sockets = Array.new(10) { |n| connect.tap { |s| s.write("job#{n}<p>") } }
+    sockets.each(&:close)
+    wait_for { pdfs.size == 10 }
+    raws = (1..10).map { |n| File.binread(File.join(@dir, format('%06d.fgl', n))) }
+    expect(raws).to match_array((0...10).map { |n| "job#{n}<p>" })
+    expect(index.map { |e| e['connection'] }.uniq.size).to eq(10)
+  end
+
   it 'writes one file set per copy' do
     start_server
     connect.tap { |s| s.write('x<copies3><p>') }.close

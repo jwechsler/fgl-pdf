@@ -94,7 +94,11 @@ module FglPdf
         socket = @server.accept
         id = (@connection_seq += 1)
         # Register under the lock before #handle can run its ensure (which also locks).
-        @clients_lock.synchronize { @clients[Thread.new { handle(socket, id) }] = socket }
+        # Pass socket/id as thread arguments: the loop reuses these locals, so a block
+        # closure would see the next connection's values.
+        @clients_lock.synchronize do
+          @clients[Thread.new(socket, id) { |client, conn_id| handle(client, conn_id) }] = socket
+        end
       end
     rescue IOError, Errno::EBADF, Errno::EINVAL
       nil # listening socket closed by #stop
