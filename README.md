@@ -187,8 +187,15 @@ closely as possible and reported, never silently dropped.
 - **Assumptions** where the Boca documentation is ambiguous:
   - TrueType text is anchored at the top of the em box at the current position.
   - A QR module is `pt` dots square (the point-size argument is the module size).
-  - A BMP downloaded without a preceding `<IDn>` goes to the next free logo slot from 1.
-  - Fractional arguments (e.g. `<RC10,230.0>`) are rounded to whole dots.
+  - A logo downloaded without a preceding `<IDn>` goes to an implicit slot that starts at 1
+    when the printer starts and counts up with each such download (like a power cycle).
+  - Fractional arguments (e.g. `<RC10,230.0>`) are rounded to whole dots, with a warning.
+  - `<LTn><HXlen>` thickness grows *upward* from the row (`row-n … row`), so a rule at the
+    bottom row of the stock stays on the ticket; `<VX>` grows rightward, `<BX>` inward.
+  - Inline `<G>` graphics follow the current rotation.
+  - Resident bitmap fonts are approximated with Helvetica/Courier/Times scaled to each
+    font's glyph size; TrueType ids 3–6 map to bundled DejaVu Sans (regular, bold,
+    oblique, bold oblique) unless `FGL_PDF_FONT_DIR` provides Verdana files.
 
 ## License
 
