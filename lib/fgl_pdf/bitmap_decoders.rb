@@ -9,8 +9,10 @@ module FglPdf
 
     class << self
       # Windows BMP (BITMAPINFOHEADER and later, or OS/2 BITMAPCOREHEADER), uncompressed.
-      # 1/4/8-bit pixels are black when their palette color's luminance is < 128;
-      # 24/32-bit pixels use the same threshold on their own color.
+      # 1-bit pixels print the way the Boca prints them: bit 0 is black, bit 1 is white,
+      # whatever the palette says (a logo whose palette is reversed prints correctly on
+      # the real printer). 4/8-bit pixels are black when their palette color's luminance
+      # is < 128; 24/32-bit pixels use the same threshold on their own color.
       def from_bmp(bytes)
         bytes = bytes.b
         raise DecodeError, 'not a BMP (missing BM signature)' unless bytes.bytesize >= 26 && bytes.start_with?('BM')
@@ -103,7 +105,7 @@ module FglPdf
       def bmp_row(row, width, bpp, palette)
         b = row.bytes
         case bpp
-        when 1 then Array.new(width) { |x| palette[(b[x >> 3] >> (7 - (x & 7))) & 1] || false }
+        when 1 then Array.new(width) { |x| (b[x >> 3] >> (7 - (x & 7))).nobits?(1) }
         when 4 then Array.new(width) { |x| palette[(b[x >> 1] >> (x.even? ? 4 : 0)) & 0x0F] || false }
         when 8 then Array.new(width) { |x| palette[b[x]] || false }
         else

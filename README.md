@@ -237,6 +237,8 @@ closely as possible and reported, never silently dropped.
   - `<LTn><HXlen>` thickness grows *upward* from the row (`row-n … row`), so a rule at the
     bottom row of the stock stays on the ticket; `<VX>` grows rightward, `<BX>` inward.
   - Inline `<G>` graphics follow the current rotation.
+  - 1-bit BMPs print bit 0 as black and bit 1 as white, ignoring the palette: Theater Wit's
+    logo has a reversed palette (index 0 white) and prints black on white on a real Boca.
   - Resident OCR fonts use bundled OCR-A/OCR-B; the other resident bitmap fonts are
     approximated with Helvetica/Courier/Times scaled to each font's glyph size; TrueType
     ids 3–6 use bundled DejaVu Sans unless Verdana is supplied (see [Fonts](#fonts)).

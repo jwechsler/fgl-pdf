@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe FglPdf::Bitmap do
-  # Builds an uncompressed BMP from rows of booleans (true = black).
-  def build_bmp(rows, bpp: 1, top_down: false, palette: [[255, 255, 255], [0, 0, 0]])
+  # Builds an uncompressed BMP from rows of booleans (true = black). 1-bit black is bit 0,
+  # as the Boca prints it, with a matching palette unless one is given.
+  def build_bmp(rows, bpp: 1, top_down: false, palette: [[0, 0, 0], [255, 255, 255]])
     width = rows.first.size
     height = rows.size
     row_size = (((bpp * width) + 31) / 32) * 4
@@ -11,7 +12,7 @@ RSpec.describe FglPdf::Bitmap do
     ordered = top_down ? rows : rows.reverse
     pixels = ordered.map do |row|
       bytes = if bpp == 1
-                [row.map { |on| on ? '1' : '0' }.join].pack('B*')
+                [row.map { |on| on ? '0' : '1' }.join].pack('B*')
               else
                 row.map { |on| on ? "\x00\x00\x00".b : "\xFF\xFF\xFF".b }.join
               end
@@ -50,10 +51,9 @@ RSpec.describe FglPdf::Bitmap do
       expect(described_class.from_bmp(build_bmp(pattern, top_down: true)).rows).to eq(pattern)
     end
 
-    it 'follows the palette (index 0 black)' do
-      inverted = pattern.map { |row| row.map(&:!) }
-      bmp = build_bmp(inverted, palette: [[0, 0, 0], [255, 255, 255]])
-      expect(described_class.from_bmp(bmp).rows).to eq(pattern)
+    it 'prints 1-bit bit 0 as black whatever the palette says, like the Boca' do
+      reversed_palette = build_bmp(pattern, palette: [[255, 255, 255], [0, 0, 0]])
+      expect(described_class.from_bmp(reversed_palette).rows).to eq(pattern)
     end
 
     it 'thresholds 24-bit pixels' do
